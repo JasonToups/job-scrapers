@@ -54,7 +54,7 @@ def linkedin():
     # searching for all job containers
     job_container = lxml_soup.find('ul', class_='jobs-search__results-list')
     job_listings = job_container.find_all('li', class_='result-card')
-    print('You are scraping information about {} jobs.'.format(len(job_listings)))
+    print('You are scraping information about {} LinkedIn jobs.'.format(len(job_listings)))
 
     # setting up list for job information
     links = []

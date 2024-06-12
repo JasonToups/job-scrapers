@@ -14,7 +14,7 @@ from time import sleep
 from time import time
 start_time = time()
 
-from variables import SEARCH_TERMS, LOCATION, GEOID, EXPERIENCE, TIMEFRAME, JOB_COUNT, regex, INCLUDE, EXCLUDE
+from variables import SEARCH_TERMS, LOCATION, GEOID, EXPERIENCE, TIMEFRAME, PP, POSITION, PAGE_NUM, JOB_COUNT, regex, INCLUDE, EXCLUDE
 
 # google stuff for google sheets implementation
 import gspread
@@ -25,11 +25,12 @@ from warnings import warn
 
 def linkedin():
     # automatically for last week
-    url = f"https://www.linkedin.com/jobs/search/?keywords={SEARCH_TERMS}&location={LOCATION}&geoid={GEOID}&f_E={EXPERIENCE}&f_TPR={TIMEFRAME}&sortBy=DD&f_TP=1%2C2&redirect=false&position=1&pageNum=0&f"
+    url = f"https://www.linkedin.com/jobs/search/?keywords={SEARCH_TERMS}&location={LOCATION}&geoid={GEOID}&f_E={EXPERIENCE}&f_TPR={TIMEFRAME}&f_PP={PP}&position={POSITION}&pageNum={PAGE_NUM}"
 
     # this will open up new window with the url provided above
     options = webdriver.ChromeOptions() 
     options.add_experimental_option("excludeSwitches", ["enable-logging"])
+    options.add_experimental_option("detach", True)  # Keep the browser window open after the script completes
     service = Service(ChromeDriverManager().install())
     driver = webdriver.Chrome(service=service, options=options)
     driver.maximize_window()

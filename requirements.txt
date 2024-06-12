@@ -1,0 +1,7 @@
+pandas
+bs4
+selenium
+gspread
+gspread_dataframe
+webdriver_manager
+lxml

@@ -3,6 +3,8 @@ import pandas as pd
 from bs4 import BeautifulSoup
 import time
 
+from variables import SEARCH_TERMS, LOCATION, JOB_COUNT, regex, INCLUDE, EXCLUDE
+
 # linkedin params to use here IN ORDER. WILL NEED TO REORDER COLUMNS TO APPEND IN MAIN
     # title
     # 'links': links,
@@ -15,8 +17,8 @@ def indeed():
     driver = webdriver.Chrome('../chromedriver')
     driver.maximize_window()
     dataframe = pd.DataFrame(columns=["Title", "Location", "Company Name", "Date", "Links", "Description"])
-    SEARCH_TERMS = 'junior developer'
-    LOCATION = 'USA'
+    # SEARCH_TERMS = 'frontend_developer'
+    # LOCATION = 'San_Francisco'
 
     for i in range(0, 10, 10):
 

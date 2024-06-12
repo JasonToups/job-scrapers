@@ -52,7 +52,7 @@ def linkedin():
         return pd.DataFrame()  # Return empty DataFrame
     
     job_listings = job_container.find_all('li')
-    print(f'Found LinkedIn job listings: {len(job_listings)}')
+    print(f'Found job listings: {len(job_listings)}')
 
     # Setting up list for job information
     links = []
@@ -67,10 +67,18 @@ def linkedin():
         job_titles = job_title_element.text.strip() if job_title_element else None
         post_title.append(job_titles)
 
-        job_ids = job.find('a', href=True)['href']
-        job_ids = re.findall(r'/jobs/view/(\d+)/', job_ids)[0]
-        job_link = f"https://www.linkedin.com/jobs/view/{job_ids}/"
-        links.append(job_link)
+        job_id_element = job.find('a', href=True)
+        if job_id_element:
+            job_id = job_id_element['href']
+            job_id_match = re.search(r'/jobs/view/(\d+)', job_id)
+            if job_id_match:
+                job_id = job_id_match.group(1)
+                job_link = f"https://www.linkedin.com/jobs/view/{job_id}/"
+                links.append(job_link)
+            else:
+                links.append(None)
+        else:
+            links.append(None)
 
         company_name_element = job.find('h4', class_='base-search-card__subtitle')
         company_names = company_name_element.text.strip() if company_name_element else None
@@ -84,7 +92,7 @@ def linkedin():
         post_dates = post_date_element['datetime'] if post_date_element else None
         post_date.append(post_dates)
 
-    print(f'Collected {len(post_title)} job titles')
+    print(f'Collected {len(post_title)} job titles, {len(links)} links, {len(company_name)} company names, {len(job_location)} job locations, {len(post_date)} post dates')
 
     for x in range(1, len(links) + 1):
         job_xpath = f'//ul[@class="jobs-search__results-list"]/li[{x}]//a'
@@ -95,6 +103,17 @@ def linkedin():
         job_desc_element = driver.find_element(By.XPATH, jobdesc_xpath)
         job_descs = job_desc_element.text if job_desc_element else None
         job_desc.append(job_descs)
+
+    print(f'Collected {len(job_desc)} job descriptions')
+
+    # Ensure all lists are of the same length
+    min_length = min(len(post_title), len(links), len(company_name), len(post_date), len(job_location), len(job_desc))
+    post_title = post_title[:min_length]
+    links = links[:min_length]
+    company_name = company_name[:min_length]
+    post_date = post_date[:min_length]
+    job_location = job_location[:min_length]
+    job_desc = job_desc[:min_length]
 
     exclude_job_data = pd.DataFrame({
         'Title': post_title,

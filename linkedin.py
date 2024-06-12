@@ -2,62 +2,55 @@ import pandas as pd
 import re
 
 from bs4 import BeautifulSoup
-from datetime import date, timedelta, datetime
-from random import randint
-from requests import get
+from datetime import datetime
 from selenium import webdriver
-from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.service import Service
 from webdriver_manager.chrome import ChromeDriverManager
-from time import sleep
-from time import time
+from time import sleep, time
 start_time = time()
 
-from variables import SEARCH_TERMS, LOCATION, GEOID, EXPERIENCE, TIMEFRAME, PP, POSITION, PAGE_NUM, JOB_COUNT, regex, INCLUDE, EXCLUDE
+from variables import SEARCH_TERMS, LOCATION, GEOID, EXPERIENCE, TIMEFRAME, PP, POSITION, PAGE_NUM, JOB_COUNT, INCLUDE, EXCLUDE
 
-# google stuff for google sheets implementation
+# Google stuff for Google Sheets implementation
 import gspread
 from gspread_dataframe import set_with_dataframe
 gc = gspread.service_account()
 
-from warnings import warn
-
 def linkedin():
-    # automatically for last week
     url = f"https://www.linkedin.com/jobs/search/?keywords={SEARCH_TERMS}&location={LOCATION}&geoid={GEOID}&f_E={EXPERIENCE}&f_TPR={TIMEFRAME}&f_PP={PP}&position={POSITION}&pageNum={PAGE_NUM}"
 
-    # this will open up new window with the url provided above
     options = webdriver.ChromeOptions() 
     options.add_experimental_option("excludeSwitches", ["enable-logging"])
-    options.add_experimental_option("detach", True)  # Keep the browser window open after the script completes
+    options.add_experimental_option("detach", True)
     service = Service(ChromeDriverManager().install())
     driver = webdriver.Chrome(service=service, options=options)
     driver.maximize_window()
     driver.get(url)
-    sleep(3)
-    action = ActionChains(driver)
+    sleep(5)  # Increased sleep time
 
     # to show more jobs. Depends on number of jobs selected
     i = 2
     while i <= (JOB_COUNT / 25): 
         try:
-            driver.find_element(By.XPATH, '/html/body/main/div/section/button').click()
-            sleep(5)
-        except:
+            more_jobs_button = driver.find_element(By.XPATH, '//button[contains(@aria-label, "See more jobs")]')
+            more_jobs_button.click()
+            sleep(5)  # Increased sleep time
+        except Exception as e:
+            print(f"Error clicking 'Show More Jobs' button: {e}")
             break
-        i = i + 1
+        i += 1
 
     # parsing the visible webpage
     pageSource = driver.page_source
     lxml_soup = BeautifulSoup(pageSource, 'lxml')
 
-    # searching for all job containers
-    job_container = lxml_soup.find('ul', class_='jobs-search__results-list')
-    job_listings = job_container.find_all('li', class_='result-card')
-    print('You are scraping information about {} LinkedIn jobs.'.format(len(job_listings)))
 
-    # setting up list for job information
+    # Searching for all job containers
+    job_container = lxml_soup.find('ul', class_ = 'jobs-search__results-list')
+    print('You are scraping information about {} jobs.'.format(len(job_container)))
+
+    # Setting up list for job information
     links = []
     post_title = []
     company_name = []
@@ -65,52 +58,38 @@ def linkedin():
     job_location = []
     job_desc = []
 
-    # for loop for job title, company, id, location and date posted
-    for job in job_listings:
-        # job title
-        job_title_element = job.find("span", attrs={"class": "screen-reader-text"})
+    for job in job_container:
+        job_title_element = job.find("h3", class_="result-card__title")
         job_titles = job_title_element.text if job_title_element else None
         post_title.append(job_titles)
 
-        # linkedin links
         job_ids = job.find('a', href=True)['href']
-        job_ids = re.findall(r'(?!-)([0-9]*)(?=\?)', job_ids)[0]
-        job_link = f"https://www.linkedin.com/jobs/search/?currentJobId={job_ids}&redirect=false"
+        job_ids = re.findall(r'/jobs/view/(\d+)/', job_ids)[0]
+        job_link = f"https://www.linkedin.com/jobs/view/{job_ids}/"
         links.append(job_link)
 
-        # company name
-        company_name_element = job.select_one('img')
-        company_names = company_name_element['alt'] if company_name_element else None
+        company_name_element = job.find('h4', class_='result-card__subtitle')
+        company_names = company_name_element.text if company_name_element else None
         company_name.append(company_names)
 
-        # job location
-        job_location_element = job.find("span", attrs={"class": "job-result-card__location"})
+        job_location_element = job.find("span", class_="job-result-card__location")
         job_locations = job_location_element.text if job_location_element else None
         job_location.append(job_locations)
 
-        # posting date
-        post_date_element = job.select_one('time')
+        post_date_element = job.find('time')
         post_dates = post_date_element['datetime'] if post_date_element else None
         post_date.append(post_dates)
 
-    # for loop for job description and criteria
     for x in range(1, len(links) + 1):
-        # clicking on different job containers to view information about the job
-        job_xpath = f'/html/body/main/div/section/ul/li[{x}]/img'
+        job_xpath = f'//ul[@class="jobs-search__results-list"]/li[{x}]//a'
         driver.find_element(By.XPATH, job_xpath).click()
         sleep(3)
 
-        # job description
-        jobdesc_xpath = '/html/body/main/section/div[2]/section[2]/div'
+        jobdesc_xpath = '//section[contains(@class, "description")]'
         job_desc_element = driver.find_element(By.XPATH, jobdesc_xpath)
         job_descs = job_desc_element.text if job_desc_element else None
         job_desc.append(job_descs)
 
-        # job criteria container below the description
-        job_criteria_container = lxml_soup.find('ul', class_='job-criteria__list')
-        all_job_criterias = job_criteria_container.find_all("span", class_='job-criteria__text job-criteria__text--criteria')
-
-    # creating a dataframe
     exclude_job_data = pd.DataFrame({
         'Title': post_title,
         'Links': links,
@@ -129,11 +108,9 @@ def linkedin():
         'Description': job_desc,
     })
 
-    # Convert all descriptions to strings
     exclude_job_data['Description'] = exclude_job_data['Description'].astype(str)
     include_job_data['Description'] = include_job_data['Description'].astype(str)
 
-    # cleaning and filtering description column
     exclude_job_data['Description'] = exclude_job_data['Description'].str.replace('\n', ' ')
     include_job_data['Description'] = include_job_data['Description'].str.replace('\n', ' ')
 
@@ -157,7 +134,7 @@ def linkedin():
         linkedin_data = include_job_data
         print(f'using included filter only. cannot merge inc: {inlen}, exc: {exlen}')
     else:
-        linkedin_data = pd.DataFrame()  # Empty DataFrame instead of 0
+        linkedin_data = pd.DataFrame()
         print('data not available or no jobs within parameter combo')
 
     if not linkedin_data.empty:

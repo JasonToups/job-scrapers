@@ -45,10 +45,14 @@ def linkedin():
     pageSource = driver.page_source
     lxml_soup = BeautifulSoup(pageSource, 'lxml')
 
-
     # Searching for all job containers
-    job_container = lxml_soup.find('ul', class_ = 'jobs-search__results-list')
-    print('You are scraping information about {} jobs.'.format(len(job_container)))
+    job_container = lxml_soup.find('ul', class_='jobs-search__results-list')
+    if not job_container:
+        print("Job container not found.")
+        return pd.DataFrame()  # Return empty DataFrame
+    
+    job_listings = job_container.find_all('li')
+    print(f'Found LinkedIn job listings: {len(job_listings)}')
 
     # Setting up list for job information
     links = []
@@ -58,9 +62,9 @@ def linkedin():
     job_location = []
     job_desc = []
 
-    for job in job_container:
-        job_title_element = job.find("h3", class_="result-card__title")
-        job_titles = job_title_element.text if job_title_element else None
+    for job in job_listings:
+        job_title_element = job.find("h3", class_="base-search-card__title")
+        job_titles = job_title_element.text.strip() if job_title_element else None
         post_title.append(job_titles)
 
         job_ids = job.find('a', href=True)['href']
@@ -68,17 +72,19 @@ def linkedin():
         job_link = f"https://www.linkedin.com/jobs/view/{job_ids}/"
         links.append(job_link)
 
-        company_name_element = job.find('h4', class_='result-card__subtitle')
-        company_names = company_name_element.text if company_name_element else None
+        company_name_element = job.find('h4', class_='base-search-card__subtitle')
+        company_names = company_name_element.text.strip() if company_name_element else None
         company_name.append(company_names)
 
-        job_location_element = job.find("span", class_="job-result-card__location")
-        job_locations = job_location_element.text if job_location_element else None
+        job_location_element = job.find("span", class_="job-search-card__location")
+        job_locations = job_location_element.text.strip() if job_location_element else None
         job_location.append(job_locations)
 
         post_date_element = job.find('time')
         post_dates = post_date_element['datetime'] if post_date_element else None
         post_date.append(post_dates)
+
+    print(f'Collected {len(post_title)} job titles')
 
     for x in range(1, len(links) + 1):
         job_xpath = f'//ul[@class="jobs-search__results-list"]/li[{x}]//a'

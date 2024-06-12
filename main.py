@@ -13,8 +13,8 @@ class Parameters:
 
 def run_scrapers():
     linkedin_data = linkedin()
-    indeed_data = indeed()
-    angel_data = angel_list()
+    # indeed_data = indeed()
+    # angel_data = angel_list()
 
     if (linkedin_data is not None and indeed_data is not None and angel_data is not None):
         job_data = pd.concat([linkedin_data, indeed_data, angel_data], ignore_index=True)

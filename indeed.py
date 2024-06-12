@@ -1,75 +1,75 @@
-from selenium import webdriver
 import pandas as pd
+import re
+
 from bs4 import BeautifulSoup
-import time
+from datetime import datetime
+from selenium import webdriver
+from selenium.webdriver.common.by import By
+from selenium.webdriver.chrome.service import Service
+from webdriver_manager.chrome import ChromeDriverManager
+from time import sleep, time
+start_time = time()
 
-from variables import SEARCH_TERMS, LOCATION, JOB_COUNT, regex, INCLUDE, EXCLUDE
+from variables import SEARCH_TERMS, LOCATION, JOB_COUNT, INCLUDE, EXCLUDE
 
-# linkedin params to use here IN ORDER. WILL NEED TO REORDER COLUMNS TO APPEND IN MAIN
-    # title
-    # 'links': links,
-    # 'Date': post_date,
-    # 'Company Name': company_name,
-    # 'Location': job_location,
-    # 'Description': job_desc,
+# Google stuff for Google Sheets implementation
+import gspread
+from gspread_dataframe import set_with_dataframe
+gc = gspread.service_account()
 
 def indeed():
-    driver = webdriver.Chrome('../chromedriver')
+    url = f"https://www.indeed.com/jobs?q={SEARCH_TERMS}&l={LOCATION}&limit={JOB_COUNT}"
+
+    options = webdriver.ChromeOptions()
+    options.add_experimental_option("excludeSwitches", ["enable-logging"])
+    options.add_experimental_option("detach", True)
+    service = Service(ChromeDriverManager().install())
+    driver = webdriver.Chrome(service=service, options=options)
     driver.maximize_window()
-    dataframe = pd.DataFrame(columns=["Title", "Location", "Company Name", "Date", "Links", "Description"])
-    # SEARCH_TERMS = 'frontend_developer'
-    # LOCATION = 'San_Francisco'
+    driver.get(url)
+    sleep(5)  # Increased sleep time
 
-    for i in range(0, 10, 10):
+    # Parsing the visible webpage
+    pageSource = driver.page_source
+    soup = BeautifulSoup(pageSource, 'lxml')
 
-        driver.get(f"https://www.indeed.com/jobs?q={SEARCH_TERMS}&l={LOCATION}&start=" + str(i))
-        driver.implicitly_wait(5)
+    # Searching for all job containers
+    job_container = soup.find_all('div', class_='jobsearch-SerpJobCard')
+    print('You are scraping information about {} jobs.'.format(len(job_container)))
 
-        all_jobs = driver.find_elements_by_class_name('result')
+    # Setting up list for job information
+    links = []
+    post_title = []
+    company_name = []
+    post_date = []
+    job_location = []
+    job_desc = []
 
-        for job in all_jobs:
+    for job in job_container:
+        job_title_element = job.find("h2", attrs={"class": "title"})
+        job_titles = job_title_element.text.strip() if job_title_element else None
+        post_title.append(job_titles)
 
-            result_html = job.get_attribute('innerHTML')
-            soup = BeautifulSoup(result_html, 'html.parser')
+        job_ids = job.find('a', href=True)['href']
+        job_link = f"https://www.indeed.com{job_ids}"
+        links.append(job_link)
 
-            try:
-                title = soup.find("a", class_="jobtitle").text.replace('\n', '')
-            except:
-                title = 'None'
+        company_name_element = job.find('span', attrs={"class": "company"})
+        company_names = company_name_element.text.strip() if company_name_element else None
+        company_name.append(company_names)
 
-            try:
-                location = soup.find(class_="location").text
-            except:
-                location = 'None'
+        job_location_element = job.find("div", attrs={"class": "recJobLoc"})
+        job_locations = job_location_element['data-rc-loc'] if job_location_element else None
+        job_location.append(job_locations)
 
-            try:
-                company = soup.find(class_="company Name").text.replace("\n", "").strip()
-            except:
-                company = 'None'
+        post_date_element = job.find('span', attrs={"class": "date"})
+        post_dates = post_date_element.text.strip() if post_date_element else None
+        post_date.append(post_dates)
 
-            # try:
-            #     salary = soup.find(class_="salary").text.replace("\n", "").strip()
-            # except:
-            #     salary = 'None'
+    for link in links:
+        driver.get(link)
+        sleep(3)
 
-            sum_div = job.find_elements_by_class_name("summary")[0]
-            try:
-                sum_div.click()
-            except:
-                close_button = driver.find_elements_by_class_name("popover-x-button-close")[0]
-                close_button.click()
-                sum_div.click()
-            try:
-                description = driver.find_element_by_css_selector('div#vjs-desc').text
-                #print(description)
-            except:
-                description = 'None'
-
-            dataframe = dataframe.append({'Title': title,
-                                          'Location': location,
-                                          "Company Name": company,
-                                        #   "Salary": salary,
-                                          "Description": description},
-                                         ignore_index=True)
-
-    # dataframe.to_csv("jobs.csv", index=False)
+        job_desc_element = driver.find_element(By.ID, 'jobDescriptionText')
+        job_descs = job_desc_element.text if job_desc_element else None
+        job

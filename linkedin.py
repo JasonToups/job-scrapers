@@ -71,6 +71,8 @@ def linkedin():
         if job_id_element:
             job_id = job_id_element['href']
             job_id_match = re.search(r'/jobs/view/(\d+)', job_id)
+            print(job_id)
+            print(job_id_match)
             if job_id_match:
                 job_id = job_id_match.group(1)
                 job_link = f"https://www.linkedin.com/jobs/view/{job_id}/"

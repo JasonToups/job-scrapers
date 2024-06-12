@@ -10,5 +10,5 @@ JOB_COUNT = 25
 regex = '|'
 INCLUDE = ['javascript', 'python']
 INCLUDE = str(regex.join(INCLUDE))
-EXCLUDE = ['degree', 'years']
+EXCLUDE = ['']
 EXCLUDE = str(regex.join(EXCLUDE))
